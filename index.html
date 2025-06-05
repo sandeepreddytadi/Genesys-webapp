@@ -132,35 +132,210 @@
 
         /* Call Flow Builder */
         .flow-builder {
-            height: 500px;
+            height: 600px;
             position: relative;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             border: 2px dashed rgba(255, 255, 255, 0.3);
-            overflow: hidden;
+            overflow: auto;
+        }
+
+        .flow-canvas {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-width: 1200px;
+            min-height: 800px;
         }
 
         .flow-node {
             position: absolute;
             background: linear-gradient(135deg, #48bb78, #38a169);
             color: white;
-            padding: 15px;
+            padding: 12px 16px;
             border-radius: 8px;
-            cursor: pointer;
+            cursor: move;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            min-width: 120px;
+            min-width: 140px;
             text-align: center;
             transition: all 0.3s ease;
+            border: 2px solid transparent;
+            user-select: none;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .flow-node:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
 
+        .flow-node.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .flow-node.start { background: linear-gradient(135deg, #48bb78, #38a169); }
         .flow-node.queue { background: linear-gradient(135deg, #667eea, #764ba2); }
         .flow-node.ivr { background: linear-gradient(135deg, #f093fb, #f5576c); }
         .flow-node.agent { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .flow-node.condition { background: linear-gradient(135deg, #ff9500, #ff7b00); }
+        .flow-node.action { background: linear-gradient(135deg, #00c9ff, #92fe9d); }
+        .flow-node.end { background: linear-gradient(135deg, #fc466b, #3f5efb); }
+        .flow-node.transfer { background: linear-gradient(135deg, #fdbb2d, #22c1c3); }
+        .flow-node.voicemail { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #333; }
+        .flow-node.callback { background: linear-gradient(135deg, #ff6b6b, #4ecdc4); }
+
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform-origin: left center;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .connection-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 8px solid #764ba2;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .node-connector {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border: 2px solid #667eea;
+            border-radius: 50%;
+            cursor: crosshair;
+            z-index: 10;
+        }
+
+        .node-connector.input {
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .node-connector.output {
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .node-connector:hover {
+            background: #667eea;
+            transform: translateX(-50%) scale(1.2);
+        }
+
+        .flow-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .node-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .palette-item {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .palette-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .flow-properties {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-group h4 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .condition-builder {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .condition-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .condition-row select,
+        .condition-row input {
+            flex: 1;
+        }
+
+        .remove-condition {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
 
         /* Audio Controls */
         .audio-controls {
