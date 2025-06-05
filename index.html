@@ -1,4 +1,386 @@
-<!DOCTYPE html>
+// Enhanced Flow Builder Functions
+        let isConnecting = false;
+        let connectingFrom = null;
+        let connections = [];
+        let nodeCounter = 1;
+
+        function addFlowNode(type) {
+            const flowCanvas = document.getElementById('flowCanvas');
+            const nodeId = `node_${type}_${nodeCounter++}`;
+            
+            const node = document.createElement('div');
+            node.className = `flow-node ${type}`;
+            node.id = nodeId;
+            node.style.left = Math.random() * (flowCanvas.clientWidth - 200) + 'px';
+            node.style.top = Math.random() * (flowCanvas.clientHeight - 100) + 'px';
+            
+            let nodeText = getNodeText(type);
+            node.innerHTML = `
+                <div class="node-connector input" onclick="handleConnector(event, '${nodeId}', 'input')"></div>
+                <div>${nodeText}</div>
+                <div class="node-connector output" onclick="handleConnector(event, '${nodeId}', 'output')"></div>
+            `;
+            
+            node.onclick = (e) => {
+                e.stopPropagation();
+                selectFlowNode(nodeId, type);
+            };
+            
+            // Make draggable
+            makeDraggable(node);
+            
+            flowCanvas.appendChild(node);
+            flowNodes.push({
+                id: nodeId, 
+                type: type, 
+                name: nodeText,
+                config: getDefaultConfig(type),
+                position: {
+                    x: parseInt(node.style.left),
+                    y: parseInt(node.style.top)
+                }
+            });
+            
+            console.log(`Added ${type} node:`, nodeId);
+            showNotification(`${nodeText} node added`, 'success');
+        }
+
+        function getNodeText(type) {
+            const nodeTexts = {
+                'start': '🎯 Start',
+                'ivr': '📞 IVR Menu',
+                'queue': '⏳ Queue',
+                'agent': '👤 Agent',
+                'condition': '🔀 Condition',
+                'action': '⚡ Action',
+                'transfer': '🔄 Transfer',
+                'voicemail': '📧 Voicemail',
+                'callback': '📞 Callback',
+                'end': '🏁 End'
+            };
+            return nodeTexts[type] || '⚪ Node';
+        }
+
+        function getDefaultConfig(type) {
+            const configs = {
+                'start': { description: 'Flow entry point' },
+                'ivr': { 
+                    prompt: 'Welcome to our service',
+                    options: [
+                        { digit: '1', description: 'Sales', action: 'transfer_to_queue' },
+                        { digit: '2', description: 'Support', action: 'transfer_to_queue' },
+                        { digit: '0', description: 'Operator', action: 'transfer_to_agent' }
+                    ],
+                    timeout: 10,
+                    retries: 3
+                },
+                'queue': { 
+                    name: 'Default Queue',
+                    priority: 'normal',
+                    timeout: 300,
+                    music_on_hold: true,
+                    announcements: []
+                },
+                'agent': { 
+                    skill_required: [],
+                    routing_method: 'longest_idle',
+                    timeout: 20
+                },
+                'condition': {
+                    conditions: [
+                        { field: 'caller_id', operator: 'equals', value: '', action: 'continue' }
+                    ]
+                },
+                'action': {
+                    action_type: 'play_audio',
+                    parameters: {}
+                },
+                'transfer': {
+                    destination_type: 'external',
+                    destination: '',
+                    transfer_type: 'warm'
+                },
+                'voicemail': {
+                    greeting: 'Please leave a message',
+                    max_duration: 120,
+                    send_email: true
+                },
+                'callback': {
+                    callback_queue: '',
+                    estimated_wait: 0
+                },
+                'end': { reason: 'normal_completion' }
+            };
+            return configs[type] || {};
+        }
+
+        function handleConnector(e, nodeId, type) {
+            e.stopPropagation();
+            
+            if (!isConnecting) return;
+            
+            if (type === 'output' && !connectingFrom) {
+                connectingFrom = nodeId;
+                showNotification('Select input connector to complete connection', 'info');
+            } else if (type === 'input' && connectingFrom) {
+                createConnection(connectingFrom, nodeId);
+                connectingFrom = null;
+                isConnecting = false;
+                document.getElementById('connectionBtn').textContent = '🔗 Connect Mode';
+                showNotification('Connection created', 'success');
+            }
+        }
+
+        function createConnection(fromId, toId) {
+            const connection = { from: fromId, to: toId, id: `conn_${Date.now()}` };
+            connections.push(connection);
+            drawConnection(connection);
+        }
+
+        function drawConnection(connection) {
+            const fromNode = document.getElementById(connection.from);
+            const toNode = document.getElementById(connection.to);
+            
+            if (!fromNode || !toNode) return;
+            
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
+            const canvasRect = document.getElementById('flowCanvas').getBoundingClientRect();
+            
+            const fromX = fromRect.left - canvasRect.left + fromRect.width / 2;
+            const fromY = fromRect.bottom - canvasRect.top;
+            const toX = toRect.left - canvasRect.left + toRect.width / 2;
+            const toY = toRect.top - canvasRect.top;
+            
+            const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+            const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+            
+            // Create connection line
+            const line = document.createElement('div');
+            line.className = 'connection-line';
+            line.id = connection.id;
+            line.style.width = length + 'px';
+            line.style.left = fromX + 'px';
+            line.style.top = fromY + 'px';
+            line.style.transform = `rotate(${angle}deg)`;
+            
+            // Create arrow
+            const arrow = document.createElement('div');
+            arrow.className = 'connection-arrow';
+            arrow.style.left = (toX - 4) + 'px';
+            arrow.style.top = (toY - 4) + 'px';
+            arrow.style.transform = `rotate(${angle}deg)`;
+            
+            document.getElementById('flowCanvas').appendChild(line);
+            document.getElementById('flowCanvas').appendChild(arrow);
+        }
+
+        function redrawConnections() {
+            // Remove existing connection lines
+            document.querySelectorAll('.connection-line, .connection-arrow').forEach(el => el.remove());
+            
+            // Redraw all connections
+            connections.forEach(drawConnection);
+        }
+
+        function toggleConnections() {
+            isConnecting = !isConnecting;
+            const btn = document.getElementById('connectionBtn');
+            if (isConnecting) {
+                btn.textContent = '❌ Cancel Connect';
+                showNotification('Connection mode active. Click output then input connectors.', 'info');
+            } else {
+                btn.textContent = '🔗 Connect Mode';
+                connectingFrom = null;
+                showNotification('Connection mode disabled', 'info');
+            }
+        }
+
+        function selectFlowNode(nodeId, type) {
+            // Remove previous selection
+            document.querySelectorAll('.flow-node').forEach(node => node.classList.remove('selected'));
+            
+            // Select current node
+            document.getElementById(nodeId).classList.add('selected');
+            
+            selectedFlowNode = {id: nodeId, type: type};
+            
+            const node = flowNodes.find(n => n.id === nodeId);
+            if (node) {
+                displayNodeProperties(node);
+            }
+        }
+
+        function displayNodeProperties(node) {
+            const propertiesDiv = document.getElementById('nodeProperties');
+            propertiesDiv.innerHTML = generatePropertiesForm(node);
+        }
+
+        function generatePropertiesForm(node) {
+            let html = `
+                <div class="property-group">
+                    <h4>Basic Properties</h4>
+                    <div class="form-group">
+                        <label>Node Name:</label>
+                        <input type="text" id="prop_name" value="${node.name}" onchange="updateNodeProperty('name', this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <textarea id="prop_description" onchange="updateNodeProperty('description', this.value)">${node.config.description || ''}</textarea>
+                    </div>
+                </div>
+            `;
+
+            // Type-specific properties
+            switch(node.type) {
+                case 'ivr':
+                    html += generateIVRProperties(node);
+                    break;
+                case 'queue':
+                    html += generateQueueProperties(node);
+                    break;
+                case 'agent':
+                    html += generateAgentProperties(node);
+                    break;
+                case 'condition':
+                    html += generateConditionProperties(node);
+                    break;
+                case 'action':
+                    html += generateActionProperties(node);
+                    break;
+                case 'transfer':
+                    html += generateTransferProperties(node);
+                    break;
+                case 'voicemail':
+                    html += generateVoicemailProperties(node);
+                    break;
+                case 'callback':
+                    html += generateCallbackProperties(node);
+                    break;
+            }
+
+            html += `
+                <div class="form-group">
+                    <button class="btn btn-success" onclick="saveNodeProperties()">Save Properties</button>
+                    <button class="btn btn-danger" onclick="deleteNode('${node.id}')" style="margin-left: 10px;">Delete Node</button>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function generateIVRProperties(node) {
+            return `
+                <div class="property-group">
+                    <h4>IVR Configuration</h4>
+                    <div class="form-group">
+                        <label>Welcome Prompt:</label>
+                        <textarea id="prop_prompt">${node.config.prompt || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Timeout (seconds):</label>
+                        <input type="number" id="prop_timeout" value="${node.config.timeout || 10}">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Retries:</label>
+                        <input type="number" id="prop_retries" value="${node.config.retries || 3}">
+                    </div>
+                    <div class="form-group">
+                        <label>Menu Options:</label>
+                        <div id="ivrOptions">
+                            ${(node.config.options || []).map((opt, i) => `
+                                <div class="condition-row">
+                                    <input type="text" placeholder="Digit" value="${opt.digit}" onchange="updateIVROption(${i}, 'digit', this.value)">
+                                    <input type="text" placeholder="Description" value="${opt.description}" onchange="updateIVROption(${i}, 'description', this.value)">
+                                    <select onchange="updateIVROption(${i}, 'action', this.value)">
+                                        <option value="transfer_to_queue" ${opt.action === 'transfer_to_queue' ? 'selected' : ''}>Transfer to Queue</option>
+                                        <option value="transfer_to_agent" ${opt.action === 'transfer_to_agent' ? 'selected' : ''}>Transfer to Agent</option>
+                                        <option value="play_message" ${opt.action === 'play_message' ? 'selected' : ''}>Play Message</option>
+                                        <option value="end_call" ${opt.action === 'end_call' ? 'selected' : ''}>End Call</option>
+                                    </select>
+                                    <button class="remove-condition" onclick="removeIVROption(${i})">×</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button class="btn btn-primary" onclick="addIVROption()" style="margin-top: 10px;">Add Option</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateQueueProperties(node) {
+            return `
+                <div class="property-group">
+                    <h4>Queue Configuration</h4>
+                    <div class="form-group">
+                        <label>Queue Name:</label>
+                        <input type="text" id="prop_queue_name" value="${node.config.name || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Priority:</label>
+                        <select id="prop_priority">
+                            <option value="low" ${node.config.priority === 'low' ? 'selected' : ''}>Low</option>
+                            <option value="normal" ${node.config.priority === 'normal' ? 'selected' : ''}>Normal</option>
+                            <option value="high" ${node.config.priority === 'high' ? 'selected' : ''}>High</option>
+                            <option value="urgent" ${node.config.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Timeout (seconds):</label>
+                        <input type="number" id="prop_queue_timeout" value="${node.config.timeout || 300}">
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="prop_music_on_hold" ${node.config.music_on_hold ? 'checked' : ''}> Music on Hold</label>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateAgentProperties(node) {
+            return `
+                <div class="property-group">
+                    <h4>Agent Configuration</h4>
+                    <div class="form-group">
+                        <label>Required Skills:</label>
+                        <input type="text" id="prop_skills" value="${(node.config.skill_required || []).join(', ')}" placeholder="skill1, skill2, skill3">
+                    </div>
+                    <div class="form-group">
+                        <label>Routing Method:</label>
+                        <select id="prop_routing">
+                            <option value="longest_idle" ${node.config.routing_method === 'longest_idle' ? 'selected' : ''}>Longest Idle</option>
+                            <option value="round_robin" ${node.config.routing_method === 'round_robin' ? 'selected' : ''}>Round Robin</option>
+                            <option value="most_skilled" ${node.config.routing_method === 'most_skilled' ? 'selected' : ''}>Most Skilled</option>
+                            <option value="least_utilized" ${node.config.routing_method === 'least_utilized' ? 'selected' : ''}>Least Utilized</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ring Timeout (seconds):</label>
+                        <input type="number" id="prop_agent_timeout" value="${node.config.timeout || 20}">
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateConditionProperties(node) {
+            return `
+                <div class="property-group">
+                    <h4>Condition Configuration</h4>
+                    <div class="condition-builder">
+                        ${(node.config.conditions || []).map((cond, i) => `
+                            <div class="condition-row">
+                                <select onchange="updateCondition(${i}, 'field', this.value)">
+                                    <option value="caller_id" ${cond.field === 'caller_id' ? 'selected' : ''}>Caller ID</option>
+                                    <option value="time_of_day" ${cond.field === 'time_of_day' ? 'selected' : ''}>Time of Day</option>
+                                    <option value="queue_length" ${cond.field === 'queue_length' ? 'selected' : ''}>Queue Length</option>
+                                    <option value="agent_availability" ${cond.field === 'agent_availability' ? 'selected' : ''}>Agent Availability</option>
+                                    <option value="custom_variable" ${cond.field === 'custom_variable' ? 'selected' : ''}>Custom Variable</option>
+                                </select>
+                                <select onchange="updateCondition(${i}, 'operator', this.value)">
+                                    <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>Equals</option>
+                                    <option value="not_equals" ${cond.operator === 'not_equals' ? 'selected' : ''}>Not Equals</option>
+                                    <option value="greater_than" ${cond.operator === 'greater_than' ? 'selected' : ''}>Greater Than</option>
+                                    <option value="less_than" ${cond.operator === 'less_than' ? 'selected' : ''}>Less Than</option>
+                                    <option value="<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
