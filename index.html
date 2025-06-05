@@ -548,26 +548,42 @@
             <div class="content-section" id="callflow">
                 <div class="card">
                     <h3>Call Flow Builder</h3>
-                    <div style="margin-bottom: 20px;">
-                        <button class="btn btn-primary" onclick="addFlowNode('start')">+ Start Node</button>
-                        <button class="btn btn-primary" onclick="addFlowNode('ivr')">+ IVR Menu</button>
-                        <button class="btn btn-primary" onclick="addFlowNode('queue')">+ Queue</button>
-                        <button class="btn btn-primary" onclick="addFlowNode('agent')">+ Agent</button>
+                    
+                    <!-- Node Palette -->
+                    <div class="node-palette">
+                        <div class="palette-item" onclick="addFlowNode('start')">🎯 Start</div>
+                        <div class="palette-item" onclick="addFlowNode('ivr')">📞 IVR Menu</div>
+                        <div class="palette-item" onclick="addFlowNode('queue')">⏳ Queue</div>
+                        <div class="palette-item" onclick="addFlowNode('agent')">👤 Agent</div>
+                        <div class="palette-item" onclick="addFlowNode('condition')">🔀 Condition</div>
+                        <div class="palette-item" onclick="addFlowNode('action')">⚡ Action</div>
+                        <div class="palette-item" onclick="addFlowNode('transfer')">🔄 Transfer</div>
+                        <div class="palette-item" onclick="addFlowNode('voicemail')">📧 Voicemail</div>
+                        <div class="palette-item" onclick="addFlowNode('callback')">📞 Callback</div>
+                        <div class="palette-item" onclick="addFlowNode('end')">🏁 End</div>
                     </div>
-                    <div class="flow-builder" id="flowBuilder">
-                        <!-- Flow nodes will be added here dynamically -->
+                    
+                    <!-- Flow Toolbar -->
+                    <div class="flow-toolbar">
+                        <button class="btn btn-primary" onclick="clearFlow()">🗑️ Clear All</button>
+                        <button class="btn btn-success" onclick="validateFlow()">✅ Validate Flow</button>
+                        <button class="btn btn-primary" onclick="exportFlow()">💾 Export</button>
+                        <button class="btn btn-primary" onclick="importFlow()">📁 Import</button>
+                        <button class="btn btn-success" onclick="testFlow()">🧪 Test Flow</button>
+                        <button class="btn btn-primary" onclick="toggleConnections()" id="connectionBtn">🔗 Connect Mode</button>
+                    </div>
+                    
+                    <div class="flow-builder">
+                        <div class="flow-canvas" id="flowCanvas">
+                            <!-- Flow nodes and connections will be added here dynamically -->
+                        </div>
                     </div>
                 </div>
                 
-                <div class="card">
-                    <h3>Flow Configuration</h3>
-                    <div>
-                        <label>Selected Node: <span id="selectedNode">None</span></label>
-                        <div style="margin-top: 15px;">
-                            <input type="text" placeholder="Node Name" id="nodeName" style="width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc;">
-                            <textarea placeholder="Node Configuration (JSON)" id="nodeConfig" style="width: 100%; height: 100px; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc;"></textarea>
-                            <button class="btn btn-success" onclick="saveNodeConfig()">Save Configuration</button>
-                        </div>
+                <div class="flow-properties">
+                    <h3>Node Properties</h3>
+                    <div id="nodeProperties">
+                        <p>Select a node to edit its properties</p>
                     </div>
                 </div>
             </div>
