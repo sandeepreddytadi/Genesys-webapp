@@ -648,4 +648,361 @@
         });
 
         // Recording Functions
-        function startRecording
+        function startRecording() {
+            if (!isRecording) {
+                isRecording = true;
+                console.log('Recording started');
+                
+                // Request microphone access
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function(stream) {
+                            console.log('Microphone access granted');
+                            // In a real implementation, you would start recording here
+                            showNotification('Recording started', 'success');
+                        })
+                        .catch(function(err) {
+                            console.log('Microphone access denied:', err);
+                            showNotification('Microphone access required for recording', 'error');
+                            isRecording = false;
+                        });
+                } else {
+                    console.log('Recording simulation started');
+                    showNotification('Recording started (simulation)', 'success');
+                }
+            } else {
+                isRecording = false;
+                console.log('Recording stopped');
+                showNotification('Recording stopped', 'info');
+            }
+        }
+
+        function emergencyMode() {
+            showNotification('Emergency mode activated! All calls routed to priority queue.', 'error');
+            console.log('Emergency mode activated');
+            
+            // Simulate emergency actions
+            document.body.style.borderTop = '5px solid #f56565';
+            setTimeout(() => {
+                document.body.style.borderTop = 'none';
+            }, 5000);
+        }
+
+        // Flow Builder Functions
+        function addFlowNode(type) {
+            const flowBuilder = document.getElementById('flowBuilder');
+            const nodeId = 'node_' + Date.now();
+            
+            const node = document.createElement('div');
+            node.className = `flow-node ${type}`;
+            node.id = nodeId;
+            node.style.left = Math.random() * 400 + 'px';
+            node.style.top = Math.random() * 300 + 'px';
+            
+            let nodeText = '';
+            switch(type) {
+                case 'start': nodeText = '🎯 Start'; break;
+                case 'ivr': nodeText = '📞 IVR Menu'; break;
+                case 'queue': nodeText = '⏳ Queue'; break;
+                case 'agent': nodeText = '👤 Agent'; break;
+                default: nodeText = '⚪ Node';
+            }
+            
+            node.innerHTML = nodeText;
+            node.onclick = () => selectFlowNode(nodeId, type);
+            
+            // Make draggable
+            makeDraggable(node);
+            
+            flowBuilder.appendChild(node);
+            flowNodes.push({id: nodeId, type: type, config: {}});
+            
+            console.log(`Added ${type} node:`, nodeId);
+        }
+
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            
+            element.onmousedown = dragMouseDown;
+            
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+            
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+            
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        function selectFlowNode(nodeId, type) {
+            selectedFlowNode = {id: nodeId, type: type};
+            document.getElementById('selectedNode').textContent = `${type.toUpperCase()} (${nodeId})`;
+            
+            // Load existing configuration
+            const node = flowNodes.find(n => n.id === nodeId);
+            if (node) {
+                document.getElementById('nodeName').value = node.name || '';
+                document.getElementById('nodeConfig').value = JSON.stringify(node.config, null, 2);
+            }
+        }
+
+        function saveNodeConfig() {
+            if (!selectedFlowNode) {
+                showNotification('Please select a node first', 'error');
+                return;
+            }
+            
+            const nodeName = document.getElementById('nodeName').value;
+            const nodeConfigText = document.getElementById('nodeConfig').value;
+            
+            try {
+                const config = nodeConfigText ? JSON.parse(nodeConfigText) : {};
+                
+                const nodeIndex = flowNodes.findIndex(n => n.id === selectedFlowNode.id);
+                if (nodeIndex >= 0) {
+                    flowNodes[nodeIndex].name = nodeName;
+                    flowNodes[nodeIndex].config = config;
+                    
+                    // Update visual node if name provided
+                    if (nodeName) {
+                        const nodeElement = document.getElementById(selectedFlowNode.id);
+                        if (nodeElement) {
+                            const icon = nodeElement.innerHTML.split(' ')[0];
+                            nodeElement.innerHTML = `${icon} ${nodeName}`;
+                        }
+                    }
+                    
+                    showNotification('Node configuration saved', 'success');
+                    console.log('Saved node config:', flowNodes[nodeIndex]);
+                }
+            } catch (e) {
+                showNotification('Invalid JSON configuration', 'error');
+            }
+        }
+
+        // Utility Functions
+        function updateMetrics() {
+            // Simulate real-time metrics updates
+            const activeAgents = Math.floor(Math.random() * 5) + 10;
+            const queueCalls = Math.floor(Math.random() * 10) + 3;
+            const avgWaitTime = Math.floor(Math.random() * 180) + 60;
+            
+            document.getElementById('activeAgents').textContent = activeAgents;
+            document.getElementById('queueCalls').textContent = queueCalls;
+            document.getElementById('avgWaitTime').textContent = formatTime(avgWaitTime);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 10000;
+                max-width: 300px;
+                word-wrap: break-word;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            // Set color based on type
+            switch(type) {
+                case 'success':
+                    notification.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
+                    break;
+                case 'error':
+                    notification.style.background = 'linear-gradient(135deg, #f56565, #e53e3e)';
+                    break;
+                case 'info':
+                default:
+                    notification.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+            }
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Add slide in animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                    document.head.removeChild(style);
+                }, 300);
+            }, 3000);
+        }
+
+        // Audio Context for Call Simulation
+        let audioContext = null;
+        let oscillator = null;
+
+        function playTone(frequency = 440, duration = 1000) {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        function simulateDialTone() {
+            playTone(350, 500);
+            setTimeout(() => playTone(440, 500), 500);
+        }
+
+        function simulateBusyTone() {
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => playTone(480, 250), i * 500);
+                setTimeout(() => playTone(620, 250), i * 500 + 250);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Contact Center Platform initialized');
+            updateMetrics();
+            
+            // Update metrics every 30 seconds
+            setInterval(updateMetrics, 30000);
+            
+            // Add some sample flow nodes
+            setTimeout(() => {
+                addFlowNode('start');
+                setTimeout(() => addFlowNode('ivr'), 1000);
+                setTimeout(() => addFlowNode('queue'), 2000);
+            }, 1000);
+            
+            showNotification('Contact Center Platform Ready', 'success');
+        });
+
+        // Additional Call Flow Features
+        function exportFlowConfig() {
+            const config = {
+                nodes: flowNodes,
+                version: '1.0',
+                created: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'call_flow_config.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            showNotification('Flow configuration exported', 'success');
+        }
+
+        function importFlowConfig() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const config = JSON.parse(e.target.result);
+                        
+                        // Clear existing nodes
+                        document.getElementById('flowBuilder').innerHTML = '';
+                        flowNodes = [];
+                        
+                        // Import nodes
+                        if (config.nodes) {
+                            config.nodes.forEach(nodeData => {
+                                // Recreate node visually
+                                addFlowNode(nodeData.type);
+                                const lastNode = flowNodes[flowNodes.length - 1];
+                                lastNode.config = nodeData.config;
+                                lastNode.name = nodeData.name;
+                            });
+                        }
+                        
+                        showNotification('Flow configuration imported', 'success');
+                    } catch (err) {
+                        showNotification('Invalid configuration file', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        // Real-time Dashboard Updates
+        function startRealTimeUpdates() {
+            setInterval(() => {
+                // Simulate real-time call volume changes
+                const callVolume = Math.floor(Math.random() * 20) + 5;
+                const waitTime = Math.floor(Math.random() * 300) + 30;
+                
+                // Update queue displays
+                document.querySelectorAll('.queue-item').forEach((item, index) => {
+                    const info = item.querySelector('.queue-info small');
+                    const calls = Math.floor(Math.random() * 15) + 1;
+                    const avgWait = Math.floor(Math.random() * 180) + 30;
+                    info.textContent = `${calls} calls waiting • Avg wait: ${formatTime(avgWait)}`;
+                });
+                
+            }, 5000);
+        }
+
+        // Start real-time updates
+        startRealTimeUpdates();
+    </script>
+</body>
+</html>
